@@ -114,6 +114,27 @@ function calculateDistanceBetween(lat1, lon1, lat2, lon2) {
   return d;
 }
 
+function getNearByEmergencyData(nearByLocations, startLat, startLong) {
+  let nearByLocation = [];
+  for (let i = 0; i < nearByLocations.length; i++) {
+    let hospital = nearByLocations[i];
+    let endLat = hospital.location.lat;
+    let endLong = hospital.location.lng;
+    nearByLocation[i] = calculateDistanceBetween(startLat, startLong, endLat, endLong);
+  }
+  let index = 0;
+  if (nearByLocation) {
+    let min = nearByLocation[0];
+    for (let i = 1; i < nearByLocation.length; i++) {
+      if (nearByLocation[i] < min) {
+        min = nearByLocation[i];
+        index = i;
+      }
+    }
+  }
+  return nearByLocations[index];
+}
+
 exports.getNearByHospital = functions.https.onRequest((req, res) => {
   // Grab the text parameter.
   const startLat = req.query.lat;
@@ -121,26 +142,9 @@ exports.getNearByHospital = functions.https.onRequest((req, res) => {
   // Push the new message into the Realtime Database using the Firebase Admin SDK.
   return admin.database().ref('/EmergencyContacts/Hospitals').once('value').then(snap => {
     if(snap.exists()) {
-      // console.log("Hospital data: ", snap.val());
-      let hospitals = snap.val();
-      let nearByHospitals = [];
-      for (let i = 0; i < hospitals.length; i++) {
-        let hospital = hospitals[i];
-        let endLat = hospital.location.lat;
-        let endLong = hospital.location.lng;
-        nearByHospitals[i] = calculateDistanceBetween(startLat, startLong, endLat, endLong);
-      }
-      if (nearByHospitals) {
-        let index = 0;
-        let min = nearByHospitals[0];
-        for (let i = 1; i < nearByHospitals.length; i++) {
-          if (nearByHospitals[i] < min) {
-            min = nearByHospitals[i];
-            index = i;
-          }
-        }
-        console.log("nearByhospitals: ",hospitals[index]);
-        res.status(200).send(hospitals[index]);
+      let nearByHospital = getNearByEmergencyData(snap.val(), startLat, startLong);
+      if (nearByHospital) {
+        res.status(200).send(nearByHospital);
       } else {
         res.end();
       }
