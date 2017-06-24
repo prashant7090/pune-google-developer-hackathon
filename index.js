@@ -17,6 +17,9 @@
 
 // [START import]
 const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+
+admin.initializeApp(functions.config().firebase);
 // [END import]
 
 // [START helloWorld]
@@ -70,9 +73,6 @@ exports.helloPubSubAttributes = functions.pubsub.topic('yet-another-topic-name')
   console.log(`Hello ${name || 'World'}!`);
 });
 
-
-// Take the text parameter passed to this HTTP endpoint and insert it into the
-// Realtime Database under the path /messages/:pushId/original
 exports.addMessage = functions.https.onRequest((req, res) => {
   // Grab the text parameter.
   const original = req.query.text;
@@ -83,21 +83,69 @@ exports.addMessage = functions.https.onRequest((req, res) => {
   });
 });
 
-//https://emergencyx-b355e.firebaseio.com/EmergencyContacts/Hospitals
-
 exports.isOfficial = functions.https.onRequest((req, res) => {
-
- const uuid = req.query.uuid;
- console.log("helloWorld");
- return admin.database().ref('/EmergencyContacts/Hospitals').once('value').then(snap => {
+  // Grab the text parameter.
+  const uuid = req.query.uuid;
+  // Push the new message into the Realtime Database using the Firebase Admin SDK.
+  return admin.database().ref('/EmergencyContacts/Hospitals').once('value').then(snap => {
     if(snap.exists()) {
-        console.log("Hospital data: ", snap.val());
-        res.status(200).send(snap.val());
+      console.log("Hospital data: ", snap.val());
+      res.status(200).send(snap.val());
     } else {
-        res.end();
+      res.end();
     }
- });
+  });
 });
 
+function toRad(Value) {
+  return Value * Math.PI / 180;
+}
 
+function calculateDistanceBetween(lat1, lon1, lat2, lon2) {
+  //Radius of the earth in:  1.609344 miles,  6371 km  | var R = (6371 / 1.609344);
+  var R = 3958.7558657440545; // Radius of earth in Miles
+  var dLat = toRad(lat2-lat1);
+  var dLon = toRad(lon2-lon1);
+  var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var d = R * c;
+  return d;
+}
 
+exports.getNearByHospital = functions.https.onRequest((req, res) => {
+  // Grab the text parameter.
+  const startLat = req.query.lat;
+  const startLong = req.query.lng;
+  // Push the new message into the Realtime Database using the Firebase Admin SDK.
+  return admin.database().ref('/EmergencyContacts/Hospitals').once('value').then(snap => {
+    if(snap.exists()) {
+      // console.log("Hospital data: ", snap.val());
+      let hospitals = snap.val();
+      let nearByHospitals = [];
+      for (let i = 0; i < hospitals.length; i++) {
+        let hospital = hospitals[i];
+        let endLat = hospital.location.lat;
+        let endLong = hospital.location.lng;
+        nearByHospitals[i] = calculateDistanceBetween(startLat, startLong, endLat, endLong);
+      }
+      if (nearByHospitals) {
+        let index = 0;
+        let min = nearByHospitals[0];
+        for (let i = 1; i < nearByHospitals.length; i++) {
+          if (nearByHospitals[i] < min) {
+            min = nearByHospitals[i];
+            index = i;
+          }
+        }
+        console.log("nearByhospitals: ",hospitals[index]);
+        res.status(200).send(hospitals[index]);
+      } else {
+        res.end();
+      }
+    } else {
+      res.end();
+    }
+  });
+});
