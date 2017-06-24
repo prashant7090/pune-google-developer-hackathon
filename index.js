@@ -83,3 +83,19 @@ exports.addMessage = functions.https.onRequest((req, res) => {
   });
 });
 
+//https://emergencyx-b355e.firebaseio.com/EmergencyContacts/Hospitals
+
+exports.isOfficial = functions.https.onRequest((req, res) => {
+  // Grab the text parameter.
+  const uuid = req.query.uuid;
+  // Push the new message into the Realtime Database using the Firebase Admin SDK.
+   const getSomethingPromise = admin.database().ref(`/EmergencyContacts/Hospitals`).once('value');
+	     return getSomethingPromise.then(results => {
+        const somethingSnapshot = results[0];
+	console.log("Checking Hos Data: " , somethingSnapshot);
+        // Do something with the snapshot
+    }
+});
+
+
+
