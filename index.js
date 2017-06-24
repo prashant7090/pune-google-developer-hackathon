@@ -94,7 +94,7 @@ exports.isOfficial = functions.https.onRequest((req, res) => {
         const somethingSnapshot = results[0];
 	console.log("Checking Hos Data: " , somethingSnapshot);
         // Do something with the snapshot
-    }
+    });
 });
 
 
