@@ -90,8 +90,12 @@ exports.isOfficial = functions.https.onRequest((req, res) => {
  const uuid = req.query.uuid;
  console.log("helloWorld");
  return admin.database().ref('/EmergencyContacts/Hospitals').once('value').then(snap => {
-   console.log("Hospital data: ", snap.val());
-   res.redirect(303, snap.val());
+    if(snap.exists()) {
+        console.log("Hospital data: ", snap.val());
+        res.status(200).send(snap.val());
+    } else {
+        res.end();
+    }
  });
 });
 
